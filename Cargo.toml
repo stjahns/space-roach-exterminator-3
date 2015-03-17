@@ -28,3 +28,6 @@ git = "https://github.com/rust-lang/uuid"
 
 [dependencies.pistoncore-input]
 git = "https://github.com/PistonDevelopers/input"
+
+[dependencies.tiled]
+git = "https://github.com/mattyhall/rs-tiled.git"
