@@ -12,21 +12,14 @@ extern crate sprite;
 extern crate time;
 extern crate uuid;
 
+
 use std::cell::RefCell;
 use std::rc::Rc;
-
-use ecs::system::{
-    EntityProcess,
-    EntitySystem,
-};
 
 use ecs::{
     World,
     BuildData,
-    System,
-    EntityIter,
     Entity,
-    DataHelper
 };
 
 use sdl2_window::Sdl2Window;
@@ -36,137 +29,16 @@ use opengl_graphics::{
     Texture,
 };
 
-use uuid::Uuid;
-
-use sprite::*;
 use time::*;
 
-use input::Button::{Keyboard, Mouse};
+use input::Button::{Keyboard};
 use input::keyboard::Key;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Position {
-    pub x: f32,
-    pub y: f32,
-}
+mod components;
+mod systems;
 
-pub struct InputState {
-    pub right: bool,
-    pub left: bool,
-    pub up: bool,
-    pub down: bool,
-}
-
-pub struct UpdateContext {
-    pub delta_time: f64,
-    pub input: InputState,
-}
-
-pub struct UpdateContextComponent {
-    pub context: Rc<RefCell<UpdateContext>>,
-}
-
-pub struct SpriteRenderer {
-    pub sprite: Sprite<Texture>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct SpriteAnimation {
-    frame_size: [i32; 2],
-    frame_duration: f64,
-    frames: Vec<(i32, i32)>,
-}
-
-pub struct SpriteAnimator {
-    animation: SpriteAnimation,
-    start_time: f64,
-}
-
-impl SpriteAnimator {
-    pub fn get_frame(&self, time: f64) -> [i32; 4] {
-        let elapsed_time = time - self.start_time;
-        let frame_index = ((elapsed_time / self.animation.frame_duration) as usize) % self.animation.frames.len();
-        let (x, y) = self.animation.frames[frame_index];
-
-        let frame = [
-            x * self.animation.frame_size[0],
-            y * self.animation.frame_size[1],
-            (x + 1) * self.animation.frame_size[0],
-            (y + 1) * self.animation.frame_size[1],
-        ];
-        frame
-    }
-}
-
-impl SpriteRenderer {
-    pub fn from_texture_region(texture: Rc<Texture>, region: [i32; 4]) -> SpriteRenderer {
-        let mut sprite = Sprite::from_texture(texture.clone());
-        sprite.set_src_rect(region);
-        SpriteRenderer { sprite: sprite }
-    }
-}
-
-components! {
-    SRComponents {
-        #[hot] position: Position,
-        #[hot] update_context: UpdateContextComponent,
-        #[hot] sprite_renderer: SpriteRenderer,
-        #[hot] sprite_animator: SpriteAnimator,
-    }
-}
-
-
-systems! {
-    SRSystems<SRComponents, ()> {
-        sprites: EntitySystem<SpriteProcess> = EntitySystem::new(
-             SpriteProcess,
-             aspect!(<SRComponents> all: [update_context, position, sprite_renderer, sprite_animator])
-        )
-    }
-}
-
-pub struct SpriteProcess;
-
-impl System for SpriteProcess { type Components = SRComponents; type Services = (); }
-
-impl EntityProcess for SpriteProcess {
-    fn process(
-        &mut self,
-        entities: EntityIter<SRComponents>,
-        data: &mut DataHelper<SRComponents, ()>)
-    {
-        for e in entities {
-
-            // TODO move elsewhere ...
-
-            if data.update_context[e].context.borrow().input.left {
-                data.position[e].x -= 1.0;
-            }
-
-            if data.update_context[e].context.borrow().input.right {
-                data.position[e].x += 1.0;
-            }
-
-            if data.update_context[e].context.borrow().input.up {
-                data.position[e].y -= 1.0;
-            }
-
-            if data.update_context[e].context.borrow().input.down {
-                data.position[e].y += 1.0;
-            }
-
-            // TODO - convert from world-space to screen-space ...
-
-            let Position {x, y} = data.position[e];
-            data.sprite_renderer[e].sprite.set_position(x as f64, y as f64);
-            // TODO not all sprites will necessarily be animated ...
-            let frame = data.sprite_animator[e].get_frame(time::precise_time_s());
-            data.sprite_renderer[e].sprite.set_src_rect(frame);
-        }
-    }
-
-}
-
+use components::*;
+use systems::*;
 
 fn spawn_player(world: &mut World<SRSystems>, update_context: Rc<RefCell<UpdateContext>>) -> Entity {
 
@@ -218,7 +90,7 @@ fn main() {
 
     let mut world = World::<SRSystems>::new();
 
-    let mut update_context = Rc::new(RefCell::new(UpdateContext {
+    let update_context = Rc::new(RefCell::new(UpdateContext {
         delta_time: 0.0,
         input: InputState {
             left: false,
