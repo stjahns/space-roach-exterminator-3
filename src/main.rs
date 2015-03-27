@@ -1,9 +1,8 @@
-#![feature(old_path)]
+#![feature(collections, core, custom_attribute, plugin)]
+#![plugin(secs)]
 
-#[macro_use]
-
-extern crate ecs;
 extern crate graphics;
+extern crate id;
 extern crate input;
 extern crate opengl_graphics;
 extern crate piston;
@@ -15,12 +14,7 @@ extern crate tiled;
 
 use std::cell::RefCell;
 use std::rc::Rc;
-
-use ecs::{
-    World,
-    BuildData,
-    Entity,
-};
+use std::path::Path;
 
 use sdl2_window::Sdl2Window;
 use opengl_graphics::{
@@ -40,13 +34,10 @@ use sprite::*;
 
 use tiled::parse as tiled_parse;
 
-mod components;
-mod systems;
+mod world;
 
-use components::*;
-use systems::*;
-
-fn init_level(world: &mut World<SRSystems>, update_context: Rc<RefCell<UpdateContext>>) -> Vec<Sprite<Texture>> {
+/// TODO - level tiles should be entities
+fn init_level() -> Vec<Sprite<Texture>> {
     let tmx_file = File::open(&Path::new("./assets/level.tmx")).unwrap();
     let map = tiled_parse(tmx_file).unwrap();
 
@@ -62,8 +53,8 @@ fn init_level(world: &mut World<SRSystems>, update_context: Rc<RefCell<UpdateCon
     let mut tile_textures = Vec::new();
     for tileset in map.tilesets.iter() {
         for tileset_image in tileset.images.iter() {
-
-            let path = Path::new(format!("./assets/{}", tileset_image.source));
+            let path_string = format!("./assets/{}", tileset_image.source);
+            let path = Path::new(&path_string[..]);
             let texture = Rc::new(Texture::from_path(&path).unwrap());
             tile_textures.push(texture);
         }
@@ -83,6 +74,9 @@ fn init_level(world: &mut World<SRSystems>, update_context: Rc<RefCell<UpdateCon
                 let mut sprite = Sprite::from_texture(texture.clone());
                 sprite.set_position((row * tile_width) as f64, (column * tile_height) as f64);
                 tile_sprites.push(sprite);
+
+                // TODO add physics for each tile ...
+
             }
         }
     }
@@ -90,37 +84,40 @@ fn init_level(world: &mut World<SRSystems>, update_context: Rc<RefCell<UpdateCon
     tile_sprites
 }
 
-fn spawn_player(world: &mut World<SRSystems>, update_context: Rc<RefCell<UpdateContext>>) -> Entity {
+fn spawn_player(data: &mut world::Components) -> world::Entity {
 
     let player_sprite_sheet = Rc::new(Texture::from_path(&Path::new("./assets/player.png")).unwrap());
 
-    let walk_anim = SpriteAnimation {
+    let walk_anim = world::SpriteAnimation {
         frames: vec![(0,0), (1,0), (2,0), (3,0)],
         frame_size: [32, 32],
         frame_duration: 0.25,
     };
 
-    let walk_anim_aim_up = SpriteAnimation {
+    let walk_anim_aim_up = world::SpriteAnimation {
         frames: vec![(0,1), (1,1), (2,1), (3,1)],
         frame_size: [32, 32],
         frame_duration: 0.25,
     };
 
-    world.create_entity( |entity: BuildData<SRComponents>, data: &mut SRComponents| {
-            data.update_context.add(&entity, UpdateContextComponent { context: update_context.clone() });
-            data.position.add(&entity, Position { x: 100.0, y: 100.0 });
-            data.sprite_renderer.add(&entity, SpriteRenderer::from_texture_region(
-                player_sprite_sheet.clone(),
-                [0, 0, 32, 32])
-            );
-            data.sprite_animator.add(&entity, SpriteAnimator { animation: walk_anim.clone(), start_time: time::precise_time_s() });
+    let sprite_renderer = world::SpriteRenderer::from_texture_region(
+        player_sprite_sheet.clone(),
+        [0, 0, 32, 32],
+    );
 
-            // TODO physics?
-            // TODO player controller?
-        }
-    )
+    let sprite_animator = world::SpriteAnimator {
+        animation: walk_anim.clone(),
+        start_time: time::precise_time_s(),
+    };
+
+    // TODO physics, player controller
+
+    world::Entity {
+        position: Some(data.position.add(world::Position { x: 0.0, y: 0.0 })),
+        sprite_renderer: Some(data.sprite_renderer.add(sprite_renderer)),
+        sprite_animator: Some(data.sprite_animator.add(sprite_animator)),
+    }
 }
-
 
 fn main() {
 
@@ -137,20 +134,11 @@ fn main() {
         }
     );
 
-    let mut world = World::<SRSystems>::new();
+    let mut world = world::World::new();
 
-    let update_context = Rc::new(RefCell::new(UpdateContext {
-        delta_time: 0.0,
-        input: InputState {
-            left: false,
-            right: false ,
-            up: false,
-            down: false ,
-        },
-    }));
-
-    let level_sprites = init_level(&mut world, update_context.clone());
-    let player_entity = spawn_player(&mut world, update_context.clone());
+    let level_sprites = init_level();
+    let player_entity = spawn_player(&mut world.data);
+    world.entities.push(player_entity);
 
     let ref mut gl = GlGraphics::new(opengl);
     let window = RefCell::new(window);
@@ -158,6 +146,7 @@ fn main() {
     for e in piston::events(&window) {
         use piston::event::{ RenderEvent, PressEvent, ReleaseEvent };
 
+        /*
         e.press(|button| {
             match button {
                 Keyboard(Key::Left) => update_context.borrow_mut().input.left = true,
@@ -177,30 +166,45 @@ fn main() {
                 _ => {}
             }
         });
+        */
 
         if let Some(args) = e.render_args() {
 
             use graphics::*;
 
-            world.update();
+            //world.update();
 
             gl.draw([0, 0, args.width as i32, args.height as i32], |context, gl| {
                 graphics::clear([0.3, 0.3, 0.3, 1.0], gl);
 
-                // TODO - need handy sorting layers ..
+                // TODO - need sprite sorting orders ..
 
                 // Draw level
                 for level_sprite in level_sprites.iter() {
                     level_sprite.draw(context.view, gl);
                 }
 
-                // TODO could iterate through all entities with SpriteRenderer components?
-                world.with_entity_data(&player_entity, |entity, data| {
-                    data.sprite_renderer[entity].sprite.draw(context.view, gl);
-                });
+                for entity in world.entities.iter_mut() {
+                    if let (Some(s_id), Some(p_id)) = (entity.sprite_renderer, entity.position) {
+                        let sprite_renderer = world.data.sprite_renderer.get_mut(s_id);
+                        let position = world.data.position.get(p_id);
+
+                        // Update position
+                        sprite_renderer.sprite.set_position(position.x as f64, position.y as f64);
+
+                        // Update animation frame if animated
+                        if let Some(a_id) = entity.sprite_animator {
+                            let sprite_animator = world.data.sprite_animator.get(a_id);
+                            let frame = sprite_animator.get_frame(precise_time_s());
+                            sprite_renderer.sprite.set_src_rect(frame);
+                        }
+
+                        // Draw
+                        sprite_renderer.sprite.draw(context.view, gl);
+                    }
+                }
 
             });
-
         }
     }
 }

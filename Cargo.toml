@@ -4,9 +4,8 @@ name = "space-roach-exterminator-3"
 version = "0.0.1"
 authors = ["Steve Jahns <s.t.jahns@gmail.com>"]
 
-[dependencies]
-ecs = "*"
-time = "*"
+[dependencies.time]
+git = "https://github.com/rust-lang/time"
 
 [dependencies.pistoncore-sdl2_window]
 git = "https://github.com/pistondevelopers/sdl2_window"
@@ -31,3 +30,10 @@ git = "https://github.com/PistonDevelopers/input"
 
 [dependencies.tiled]
 git = "https://github.com/mattyhall/rs-tiled.git"
+
+[dependencies.id]
+git = "https://github.com/kvark/simplecs"
+
+[dependencies.secs]
+git = "https://github.com/kvark/simplecs"
+plugin = true
