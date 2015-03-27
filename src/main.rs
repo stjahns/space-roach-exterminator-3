@@ -41,8 +41,11 @@ mod world;
 mod player;
 mod sprites;
 
-/// TODO - level tiles should be entities
-fn init_level() -> Vec<Sprite<Texture>> {
+///
+/// Load Tiled level, creating entities for each tile instance
+///
+fn init_level(data: &mut world::Components, entities: &mut Vec<world::Entity>) {
+
     let tmx_file = File::open(&Path::new("./assets/level.tmx")).unwrap();
     let map = tiled_parse(tmx_file).unwrap();
 
@@ -52,20 +55,25 @@ fn init_level() -> Vec<Sprite<Texture>> {
     let mut tile_width = 32;
     let mut tile_height = 32;
 
-
-    // Load tileset textures
+    // Load tileset textures and create shared SpriteRenderer components for each
     // TODO modify to handle tilesheets - need some representation of a texture subregion
-    let mut tile_textures = Vec::new();
+    // TODO is it OK for entities to share components? What happens when we destroy an entity?
+    // Maybe just have multiple sprite renderers that share the same Sprite instance
+
+    let mut sprite_renderer_ids = Vec::new();
+
     for tileset in map.tilesets.iter() {
         for tileset_image in tileset.images.iter() {
             let path_string = format!("./assets/{}", tileset_image.source);
             let path = Path::new(&path_string[..]);
             let texture = Rc::new(Texture::from_path(&path).unwrap());
-            tile_textures.push(texture);
+            let sprite_renderer = world::SpriteRenderer::from_texture_region(
+                texture.clone(),
+                [0, 0, 32, 32],
+            );
+            sprite_renderer_ids.push(data.sprite_renderer.add(sprite_renderer));
         }
     }
-
-    let mut tile_sprites = Vec::new();
 
     for layer in map.layers.iter() {
         for (column, tile_column) in layer.tiles.iter().enumerate() {
@@ -75,18 +83,24 @@ fn init_level() -> Vec<Sprite<Texture>> {
                     continue;
                 }
 
-                let texture = &tile_textures[(tile - 1) as usize];
-                let mut sprite = Sprite::from_texture(texture.clone());
-                sprite.set_position((row * tile_width) as f64, (column * tile_height) as f64);
-                tile_sprites.push(sprite);
+                let tile_entity = world::Entity {
+                    position: Some(data.position.add(world::Position {
+                        x: (row * tile_width) as f32,
+                        y: (column * tile_height) as f32,
+                    })),
+                    sprite_renderer: Some(sprite_renderer_ids[(tile - 1) as usize]),
+                    sprite_animator: None,
+                    player_controller: None,
 
-                // TODO add physics for each tile ...
+                };
+
+                // TODO add collision for each tile ...
+
+                entities.push(tile_entity);
 
             }
         }
     }
-
-    tile_sprites
 }
 
 fn spawn_player(data: &mut world::Components) -> world::Entity {
@@ -144,7 +158,7 @@ fn main() {
 
     let mut world = world::World::new();
 
-    let level_sprites = init_level();
+    init_level(&mut world.data, &mut world.entities);
     let player_entity = spawn_player(&mut world.data);
     world.entities.push(player_entity);
 
@@ -158,9 +172,9 @@ fn main() {
         down: false,
     };
 
-    let mut systems = vec![
-        Box::new(player::PlayerSystem) as Box<world::System>,
-        Box::new(sprites::SpriteSystem) as Box<world::System>,
+    let mut systems: Vec<Box<world::System>> = vec![
+        Box::new(player::PlayerSystem),
+        Box::new(sprites::SpriteSystem),
     ];
 
     for e in piston::events(&window) {
@@ -199,12 +213,8 @@ fn main() {
             gl.draw([0, 0, args.width as i32, args.height as i32], |context, mut gl| {
                 graphics::clear([0.3, 0.3, 0.3, 1.0], gl);
 
-                // TODO - need sprite sorting orders ..
-
-                // Draw level
-                for level_sprite in level_sprites.iter() {
-                    level_sprite.draw(context.view, gl);
-                }
+                // TODO - probably want sprite sorting orders ..
+                // Currently just draw in order of creation ..
 
                 for system in systems.iter_mut() {
                     system.render(&context, &mut gl, &mut world.data, &mut world.entities);
