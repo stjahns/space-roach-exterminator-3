@@ -14,6 +14,7 @@ extern crate tiled;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::mpsc;
 use std::path::Path;
 
 use sdl2_window::Sdl2Window;
@@ -110,13 +111,23 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
         start_time: time::precise_time_s(),
     };
 
-    // TODO physics, player controller
+    let player_controller = world::PlayerController { move_speed: 1.0 };
+
+    // TODO physics
 
     world::Entity {
         position: Some(data.position.add(world::Position { x: 0.0, y: 0.0 })),
         sprite_renderer: Some(data.sprite_renderer.add(sprite_renderer)),
         sprite_animator: Some(data.sprite_animator.add(sprite_animator)),
+        player_controller: Some(data.player_controller.add(player_controller)),
     }
+}
+
+struct ControlState {
+    left: bool,
+    right: bool,
+    up: bool,
+    down: bool,
 }
 
 fn main() {
@@ -143,36 +154,62 @@ fn main() {
     let ref mut gl = GlGraphics::new(opengl);
     let window = RefCell::new(window);
 
+    let mut control_state = ControlState {
+        left: false,
+        right: false,
+        up: false,
+        down: false,
+    };
+
     for e in piston::events(&window) {
         use piston::event::{ RenderEvent, PressEvent, ReleaseEvent };
 
-        /*
         e.press(|button| {
             match button {
-                Keyboard(Key::Left) => update_context.borrow_mut().input.left = true,
-                Keyboard(Key::Right) => update_context.borrow_mut().input.right = true,
-                Keyboard(Key::Up) => update_context.borrow_mut().input.up = true,
-                Keyboard(Key::Down) => update_context.borrow_mut().input.down = true,
+                Keyboard(Key::Left) => control_state.left = true,
+                Keyboard(Key::Right) => control_state.right = true,
+                Keyboard(Key::Up) => control_state.up = true,
+                Keyboard(Key::Down) => control_state.down = true,
                 _ => {}
             }
         });
 
         e.release(|button| {
             match button {
-                Keyboard(Key::Left) => update_context.borrow_mut().input.left = false,
-                Keyboard(Key::Right) => update_context.borrow_mut().input.right = false,
-                Keyboard(Key::Up) => update_context.borrow_mut().input.up = false,
-                Keyboard(Key::Down) => update_context.borrow_mut().input.down = false,
+                Keyboard(Key::Left) => control_state.left = false,
+                Keyboard(Key::Right) => control_state.right = false,
+                Keyboard(Key::Up) => control_state.up = false,
+                Keyboard(Key::Down) => control_state.down = false,
                 _ => {}
             }
         });
-        */
 
         if let Some(args) = e.render_args() {
 
             use graphics::*;
 
-            //world.update();
+            for entity in world.entities.iter() {
+                if let (Some(player_id), Some(position_id)) = (entity.player_controller, entity.position) {
+                    let player = world.data.player_controller.get(player_id);
+                    let position = world.data.position.get_mut(position_id);
+
+                    if control_state.up {
+                        position.y -= player.move_speed;
+                    }
+
+                    if control_state.down {
+                        position.y += player.move_speed;
+                    }
+
+                    if control_state.left {
+                        position.x -= player.move_speed;
+                    }
+
+                    if control_state.right {
+                        position.x += player.move_speed;
+                    }
+                }
+            }
 
             gl.draw([0, 0, args.width as i32, args.height as i32], |context, gl| {
                 graphics::clear([0.3, 0.3, 0.3, 1.0], gl);
@@ -184,7 +221,7 @@ fn main() {
                     level_sprite.draw(context.view, gl);
                 }
 
-                for entity in world.entities.iter_mut() {
+                for entity in world.entities.iter() {
                     if let (Some(s_id), Some(p_id)) = (entity.sprite_renderer, entity.position) {
                         let sprite_renderer = world.data.sprite_renderer.get_mut(s_id);
                         let position = world.data.position.get(p_id);

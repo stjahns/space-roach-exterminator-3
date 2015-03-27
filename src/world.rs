@@ -53,9 +53,14 @@ impl SpriteAnimator {
     }
 }
 
+pub struct PlayerController {
+    pub move_speed: f32,
+}
+
 #[secs(id)]
 pub struct EntityPrototype {
     position: Position,
     sprite_renderer: SpriteRenderer,
     sprite_animator: SpriteAnimator,
+    player_controller: PlayerController,
 }
