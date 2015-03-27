@@ -38,6 +38,8 @@ use sprite::*;
 use tiled::parse as tiled_parse;
 
 mod world;
+mod player;
+mod sprites;
 
 /// TODO - level tiles should be entities
 fn init_level() -> Vec<Sprite<Texture>> {
@@ -125,67 +127,6 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
     }
 }
 
-pub struct PlayerSystem;
-
-impl world::System for PlayerSystem {
-    fn update(&mut self, control_state: &world::ControlState, components: &mut world::Components, entities: &mut Vec<world::Entity>) {
-        for entity in entities.iter() {
-            if let (Some(player_id), Some(position_id)) = (entity.player_controller, entity.position) {
-                let player = components.player_controller.get(player_id);
-                let position = components.position.get_mut(position_id);
-
-                if control_state.up {
-                    position.y -= player.move_speed;
-                }
-
-                if control_state.down {
-                    position.y += player.move_speed;
-                }
-
-                if control_state.left {
-                    position.x -= player.move_speed;
-                }
-
-                if control_state.right {
-                    position.x += player.move_speed;
-                }
-            }
-        }
-    }
-
-    fn render(&mut self, context: &Context, gl: &mut GlGraphics, components: &mut world::Components, entities: &mut Vec<world::Entity>) { }
-}
-
-pub struct SpriteSystem;
-
-impl world::System for SpriteSystem {
-
-    fn update(&mut self, control_state: &world::ControlState, components: &mut world::Components, entities: &mut Vec<world::Entity>) { }
-
-    fn render(&mut self, context: &Context, gl: &mut GlGraphics, components: &mut world::Components, entities: &mut Vec<world::Entity>) {
-        for entity in entities.iter() {
-            if let (Some(s_id), Some(p_id)) = (entity.sprite_renderer, entity.position) {
-                let sprite_renderer = components.sprite_renderer.get_mut(s_id);
-                let position = components.position.get(p_id);
-
-                // Update position
-                sprite_renderer.sprite.set_position(position.x as f64, position.y as f64);
-
-                // Update animation frame if animated
-                if let Some(a_id) = entity.sprite_animator {
-                    let sprite_animator = components.sprite_animator.get(a_id);
-                    let frame = sprite_animator.get_frame(precise_time_s());
-                    sprite_renderer.sprite.set_src_rect(frame);
-                }
-
-                // Draw
-                sprite_renderer.sprite.draw(context.view, gl);
-            }
-        }
-    }
-}
-
-
 fn main() {
 
     let (width, height) = (640, 480);
@@ -218,8 +159,8 @@ fn main() {
     };
 
     let mut systems = vec![
-        Box::new(PlayerSystem) as Box<world::System>,
-        Box::new(SpriteSystem) as Box<world::System>,
+        Box::new(player::PlayerSystem) as Box<world::System>,
+        Box::new(sprites::SpriteSystem) as Box<world::System>,
     ];
 
     for e in piston::events(&window) {
