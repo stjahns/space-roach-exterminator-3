@@ -24,6 +24,8 @@ use opengl_graphics::{
     Texture,
 };
 
+use graphics::Context;
+
 use time::*;
 
 use input::Button::{Keyboard};
@@ -123,12 +125,66 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
     }
 }
 
-struct ControlState {
-    left: bool,
-    right: bool,
-    up: bool,
-    down: bool,
+pub struct PlayerSystem;
+
+impl world::System for PlayerSystem {
+    fn update(&mut self, control_state: &world::ControlState, components: &mut world::Components, entities: &mut Vec<world::Entity>) {
+        for entity in entities.iter() {
+            if let (Some(player_id), Some(position_id)) = (entity.player_controller, entity.position) {
+                let player = components.player_controller.get(player_id);
+                let position = components.position.get_mut(position_id);
+
+                if control_state.up {
+                    position.y -= player.move_speed;
+                }
+
+                if control_state.down {
+                    position.y += player.move_speed;
+                }
+
+                if control_state.left {
+                    position.x -= player.move_speed;
+                }
+
+                if control_state.right {
+                    position.x += player.move_speed;
+                }
+            }
+        }
+    }
+
+    fn render(&mut self, context: &Context, gl: &mut GlGraphics, components: &mut world::Components, entities: &mut Vec<world::Entity>) { }
 }
+
+pub struct SpriteSystem;
+
+impl world::System for SpriteSystem {
+
+    fn update(&mut self, control_state: &world::ControlState, components: &mut world::Components, entities: &mut Vec<world::Entity>) { }
+
+    fn render(&mut self, context: &Context, gl: &mut GlGraphics, components: &mut world::Components, entities: &mut Vec<world::Entity>) {
+        for entity in entities.iter() {
+            if let (Some(s_id), Some(p_id)) = (entity.sprite_renderer, entity.position) {
+                let sprite_renderer = components.sprite_renderer.get_mut(s_id);
+                let position = components.position.get(p_id);
+
+                // Update position
+                sprite_renderer.sprite.set_position(position.x as f64, position.y as f64);
+
+                // Update animation frame if animated
+                if let Some(a_id) = entity.sprite_animator {
+                    let sprite_animator = components.sprite_animator.get(a_id);
+                    let frame = sprite_animator.get_frame(precise_time_s());
+                    sprite_renderer.sprite.set_src_rect(frame);
+                }
+
+                // Draw
+                sprite_renderer.sprite.draw(context.view, gl);
+            }
+        }
+    }
+}
+
 
 fn main() {
 
@@ -154,15 +210,21 @@ fn main() {
     let ref mut gl = GlGraphics::new(opengl);
     let window = RefCell::new(window);
 
-    let mut control_state = ControlState {
+    let mut control_state = world::ControlState {
         left: false,
         right: false,
         up: false,
         down: false,
     };
 
+    let mut systems = vec![
+        Box::new(PlayerSystem) as Box<world::System>,
+        Box::new(SpriteSystem) as Box<world::System>,
+    ];
+
     for e in piston::events(&window) {
         use piston::event::{ RenderEvent, PressEvent, ReleaseEvent };
+        use world::System;
 
         e.press(|button| {
             match button {
@@ -184,34 +246,16 @@ fn main() {
             }
         });
 
+        // TODO where should this go?
+        for system in systems.iter_mut() {
+            system.update(&control_state, &mut world.data, &mut world.entities);
+        }
+
         if let Some(args) = e.render_args() {
 
             use graphics::*;
 
-            for entity in world.entities.iter() {
-                if let (Some(player_id), Some(position_id)) = (entity.player_controller, entity.position) {
-                    let player = world.data.player_controller.get(player_id);
-                    let position = world.data.position.get_mut(position_id);
-
-                    if control_state.up {
-                        position.y -= player.move_speed;
-                    }
-
-                    if control_state.down {
-                        position.y += player.move_speed;
-                    }
-
-                    if control_state.left {
-                        position.x -= player.move_speed;
-                    }
-
-                    if control_state.right {
-                        position.x += player.move_speed;
-                    }
-                }
-            }
-
-            gl.draw([0, 0, args.width as i32, args.height as i32], |context, gl| {
+            gl.draw([0, 0, args.width as i32, args.height as i32], |context, mut gl| {
                 graphics::clear([0.3, 0.3, 0.3, 1.0], gl);
 
                 // TODO - need sprite sorting orders ..
@@ -221,26 +265,9 @@ fn main() {
                     level_sprite.draw(context.view, gl);
                 }
 
-                for entity in world.entities.iter() {
-                    if let (Some(s_id), Some(p_id)) = (entity.sprite_renderer, entity.position) {
-                        let sprite_renderer = world.data.sprite_renderer.get_mut(s_id);
-                        let position = world.data.position.get(p_id);
-
-                        // Update position
-                        sprite_renderer.sprite.set_position(position.x as f64, position.y as f64);
-
-                        // Update animation frame if animated
-                        if let Some(a_id) = entity.sprite_animator {
-                            let sprite_animator = world.data.sprite_animator.get(a_id);
-                            let frame = sprite_animator.get_frame(precise_time_s());
-                            sprite_renderer.sprite.set_src_rect(frame);
-                        }
-
-                        // Draw
-                        sprite_renderer.sprite.draw(context.view, gl);
-                    }
+                for system in systems.iter_mut() {
+                    system.render(&context, &mut gl, &mut world.data, &mut world.entities);
                 }
-
             });
         }
     }

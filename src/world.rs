@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use sprite::*;
-use opengl_graphics::Texture;
+use opengl_graphics::{Texture, GlGraphics};
+use graphics::Context;
 use id;
 
 /// TODO move
@@ -63,4 +64,16 @@ pub struct EntityPrototype {
     sprite_renderer: SpriteRenderer,
     sprite_animator: SpriteAnimator,
     player_controller: PlayerController,
+}
+
+pub struct ControlState {
+    pub left: bool,
+    pub right: bool,
+    pub up: bool,
+    pub down: bool,
+}
+
+pub trait System {
+    fn update(&mut self, &ControlState, &mut Components, &mut Vec<Entity>);
+    fn render(&mut self, &Context, &mut GlGraphics, &mut Components, &mut Vec<Entity>);
 }
