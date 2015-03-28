@@ -112,16 +112,64 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
 
     let player_sprite_sheet = Rc::new(Texture::from_path(&Path::new("./assets/player.png")).unwrap());
 
+    let idle_anim = world::SpriteAnimation {
+        frames: vec![(0,0)],
+        frame_size: [32, 32],
+        frame_duration: 0.1,
+    };
+
     let walk_anim = world::SpriteAnimation {
         frames: vec![(0,0), (1,0), (2,0), (3,0)],
         frame_size: [32, 32],
-        frame_duration: 0.25,
+        frame_duration: 0.1,
     };
 
     let walk_anim_aim_up = world::SpriteAnimation {
         frames: vec![(0,1), (1,1), (2,1), (3,1)],
         frame_size: [32, 32],
-        frame_duration: 0.25,
+        frame_duration: 0.1,
+    };
+
+    let idle_anim_aim_up = world::SpriteAnimation {
+        frames: vec![(0,1)],
+        frame_size: [32, 32],
+        frame_duration: 0.1,
+    };
+
+    let walk_anim_aim_up_forward = world::SpriteAnimation {
+        frames: vec![(0,2), (1,2), (2,2), (3,2)],
+        frame_size: [32, 32],
+        frame_duration: 0.1,
+    };
+
+    let idle_anim_aim_up_forward = world::SpriteAnimation {
+        frames: vec![(0,2)],
+        frame_size: [32, 32],
+        frame_duration: 0.1,
+    };
+
+    let walk_anim_aim_down_forward = world::SpriteAnimation {
+        frames: vec![(0,3), (1,3), (2,3), (3,3)],
+        frame_size: [32, 32],
+        frame_duration: 0.1,
+    };
+
+    let idle_anim_aim_down_forward = world::SpriteAnimation {
+        frames: vec![(0,3)],
+        frame_size: [32, 32],
+        frame_duration: 0.1,
+    };
+
+    let walk_anim_aim_down = world::SpriteAnimation {
+        frames: vec![(0,4), (1,4), (2,4), (3,4)],
+        frame_size: [32, 32],
+        frame_duration: 0.1,
+    };
+
+    let idle_anim_aim_down = world::SpriteAnimation {
+        frames: vec![(0,4)],
+        frame_size: [32, 32],
+        frame_duration: 0.1,
     };
 
     let sprite_renderer = world::SpriteRenderer::from_texture_region(
@@ -130,7 +178,7 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
     );
 
     let sprite_animator = world::SpriteAnimator {
-        animation: walk_anim.clone(),
+        animation: idle_anim.clone(),
         start_time: time::precise_time_s(),
     };
 
@@ -138,9 +186,21 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
         move_speed: 1.0,
         state: world::PlayerState::OnFloor,
         ground_check: world::AABBCollider { width: 36.0, height: 36.0 },
-    };
+        aim_direction: [0.0, 0.0],
 
-    // TODO physics
+        idle_anim: idle_anim,
+        walk_anim: walk_anim,
+
+        walk_anim_aim_up: walk_anim_aim_up,
+        walk_anim_aim_down: walk_anim_aim_down,
+        walk_anim_aim_up_forward: walk_anim_aim_up_forward,
+        walk_anim_aim_down_forward: walk_anim_aim_down_forward,
+
+        idle_anim_aim_up: idle_anim_aim_up,
+        idle_anim_aim_down: idle_anim_aim_down,
+        idle_anim_aim_up_forward: idle_anim_aim_up_forward,
+        idle_anim_aim_down_forward: idle_anim_aim_down_forward,
+    };
 
     world::Entity {
         position: Some(data.position.add(world::Position { x: 64.0, y: 96.0 })),
@@ -212,10 +272,14 @@ fn main() {
     let window = RefCell::new(window);
 
     let mut control_state = world::ControlState {
-        left: false,
-        right: false,
-        up: false,
-        down: false,
+        move_left: false,
+        move_right: false,
+        move_up: false,
+        move_down: false,
+        aim_left: false,
+        aim_right: false,
+        aim_up: false,
+        aim_down: false,
     };
 
     let mut systems: Vec<Box<world::System>> = vec![
@@ -230,20 +294,28 @@ fn main() {
 
         e.press(|button| {
             match button {
-                Keyboard(Key::Left) => control_state.left = true,
-                Keyboard(Key::Right) => control_state.right = true,
-                Keyboard(Key::Up) => control_state.up = true,
-                Keyboard(Key::Down) => control_state.down = true,
+                Keyboard(Key::A) => control_state.move_left = true,
+                Keyboard(Key::D) => control_state.move_right = true,
+                Keyboard(Key::W) => control_state.move_up = true,
+                Keyboard(Key::S) => control_state.move_down = true,
+                Keyboard(Key::Left) => control_state.aim_left = true,
+                Keyboard(Key::Right) => control_state.aim_right = true,
+                Keyboard(Key::Up) => control_state.aim_up = true,
+                Keyboard(Key::Down) => control_state.aim_down = true,
                 _ => {}
             }
         });
 
         e.release(|button| {
             match button {
-                Keyboard(Key::Left) => control_state.left = false,
-                Keyboard(Key::Right) => control_state.right = false,
-                Keyboard(Key::Up) => control_state.up = false,
-                Keyboard(Key::Down) => control_state.down = false,
+                Keyboard(Key::A) => control_state.move_left = false,
+                Keyboard(Key::D) => control_state.move_right = false,
+                Keyboard(Key::W) => control_state.move_up = false,
+                Keyboard(Key::S) => control_state.move_down = false,
+                Keyboard(Key::Left) => control_state.aim_left = false,
+                Keyboard(Key::Right) => control_state.aim_right = false,
+                Keyboard(Key::Up) => control_state.aim_up = false,
+                Keyboard(Key::Down) => control_state.aim_down = false,
                 _ => {}
             }
         });

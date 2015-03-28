@@ -67,6 +67,21 @@ pub struct PlayerController {
     pub move_speed: f32,
     pub state: PlayerState,
     pub ground_check: AABBCollider,
+
+    pub aim_direction: [f32; 2],
+
+    pub idle_anim: SpriteAnimation,
+    pub walk_anim: SpriteAnimation,
+
+    pub walk_anim_aim_up: SpriteAnimation,
+    pub walk_anim_aim_down: SpriteAnimation,
+    pub walk_anim_aim_up_forward: SpriteAnimation,
+    pub walk_anim_aim_down_forward: SpriteAnimation,
+
+    pub idle_anim_aim_up: SpriteAnimation,
+    pub idle_anim_aim_down: SpriteAnimation,
+    pub idle_anim_aim_up_forward: SpriteAnimation,
+    pub idle_anim_aim_down_forward: SpriteAnimation,
 }
 
 pub struct CameraTarget;
@@ -93,10 +108,15 @@ pub struct EntityPrototype {
 }
 
 pub struct ControlState {
-    pub left: bool,
-    pub right: bool,
-    pub up: bool,
-    pub down: bool,
+    pub move_left: bool,
+    pub move_right: bool,
+    pub move_up: bool,
+    pub move_down: bool,
+
+    pub aim_left: bool,
+    pub aim_right: bool,
+    pub aim_up: bool,
+    pub aim_down: bool,
 }
 
 pub trait System {
