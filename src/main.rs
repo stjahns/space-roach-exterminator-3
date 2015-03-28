@@ -11,6 +11,7 @@ extern crate sprite;
 extern crate time;
 extern crate uuid;
 extern crate tiled;
+extern crate vecmath;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -40,6 +41,7 @@ use tiled::parse as tiled_parse;
 mod world;
 mod player;
 mod sprites;
+mod physics;
 
 ///
 /// Load Tiled level, creating entities for each tile instance
@@ -92,6 +94,8 @@ fn init_level(data: &mut world::Components, entities: &mut Vec<world::Entity>) {
                     sprite_animator: None,
                     player_controller: None,
                     camera_target: None,
+                    collider: Some(data.collider.add(world::AABBCollider { width: 32.0, height: 32.0 })),
+                    dynamic_body: None,
 
                 };
 
@@ -135,11 +139,13 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
     // TODO physics
 
     world::Entity {
-        position: Some(data.position.add(world::Position { x: 0.0, y: 0.0 })),
+        position: Some(data.position.add(world::Position { x: 32.0, y: 32.0 })),
         sprite_renderer: Some(data.sprite_renderer.add(sprite_renderer)),
         sprite_animator: Some(data.sprite_animator.add(sprite_animator)),
         player_controller: Some(data.player_controller.add(player_controller)),
         camera_target: Some(data.camera_target.add(world::CameraTarget)),
+        collider: Some(data.collider.add(world::AABBCollider { width: 32.0, height: 32.0 })),
+        dynamic_body: Some(data.dynamic_body.add(world::DynamicBody { vx: 0.0, vy: 0.0 })),
     }
 }
 
@@ -211,6 +217,7 @@ fn main() {
     let mut systems: Vec<Box<world::System>> = vec![
         Box::new(player::PlayerSystem),
         Box::new(sprites::SpriteSystem),
+        Box::new(physics::PhysicsSystem),
     ];
 
     for e in piston::events(&window) {

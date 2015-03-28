@@ -13,6 +13,7 @@ dependencies = [
  "tiled 0.1.1 (git+https://github.com/mattyhall/rs-tiled.git)",
  "time 0.1.21 (git+https://github.com/rust-lang/time)",
  "uuid 0.1.13 (git+https://github.com/rust-lang/uuid)",
+ "vecmath 0.0.5 (git+https://github.com/PistonDevelopers/vecmath)",
 ]
 
 [[package]]

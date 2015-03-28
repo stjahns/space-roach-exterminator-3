@@ -60,6 +60,16 @@ pub struct PlayerController {
 
 pub struct CameraTarget;
 
+pub struct DynamicBody {
+    pub vx: f32,
+    pub vy: f32,
+}
+
+pub struct AABBCollider {
+    pub width: f32,
+    pub height: f32,
+}
+
 #[secs(id)]
 pub struct EntityPrototype {
     position: Position,
@@ -67,6 +77,8 @@ pub struct EntityPrototype {
     sprite_animator: SpriteAnimator,
     player_controller: PlayerController,
     camera_target: CameraTarget,
+    collider: AABBCollider,
+    dynamic_body: DynamicBody,
 }
 
 pub struct ControlState {

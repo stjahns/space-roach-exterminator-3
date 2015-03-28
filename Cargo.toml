@@ -37,3 +37,6 @@ git = "https://github.com/kvark/simplecs"
 [dependencies.secs]
 git = "https://github.com/kvark/simplecs"
 plugin = true
+
+[dependencies.vecmath]
+git = "https://github.com/pistondevelopers/vecmath"
