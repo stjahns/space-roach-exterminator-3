@@ -54,8 +54,19 @@ impl SpriteAnimator {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum PlayerState {
+    Flying,
+    OnFloor,
+    OnCeiling,
+    OnLeftWall,
+    OnRightWall,
+}
+
 pub struct PlayerController {
     pub move_speed: f32,
+    pub state: PlayerState,
+    pub ground_check: AABBCollider,
 }
 
 pub struct CameraTarget;

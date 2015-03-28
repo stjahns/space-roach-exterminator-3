@@ -134,12 +134,16 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
         start_time: time::precise_time_s(),
     };
 
-    let player_controller = world::PlayerController { move_speed: 1.0 };
+    let player_controller = world::PlayerController {
+        move_speed: 1.0,
+        state: world::PlayerState::OnFloor,
+        ground_check: world::AABBCollider { width: 36.0, height: 36.0 },
+    };
 
     // TODO physics
 
     world::Entity {
-        position: Some(data.position.add(world::Position { x: 32.0, y: 32.0 })),
+        position: Some(data.position.add(world::Position { x: 64.0, y: 96.0 })),
         sprite_renderer: Some(data.sprite_renderer.add(sprite_renderer)),
         sprite_animator: Some(data.sprite_animator.add(sprite_animator)),
         player_controller: Some(data.player_controller.add(player_controller)),
