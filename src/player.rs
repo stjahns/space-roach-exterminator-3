@@ -7,6 +7,38 @@ use physics;
 
 pub struct PlayerSystem;
 
+impl world::System for PlayerSystem {
+
+    fn update(&mut self, control_state: &world::ControlState, components: &mut world::Components, entities: &mut Vec<world::Entity>) {
+
+        for entity in entities.iter() {
+            if let (Some(player_id), Some(body_id), Some(animator_id)) = (entity.player_controller, entity.dynamic_body, entity.sprite_animator) {
+
+                // Update orientation
+                update_walk_state(entity, components, entities);
+
+                // Update aim direction
+                if let Some(aim_direction) = get_aim_direction(control_state) {
+                    let player = components.player_controller.get_mut(player_id);
+                    player.aim_direction = aim_direction;
+
+                    // TODO shoot stuff!
+                }
+
+                // Update animation given orientation, aim direction, and speed
+                update_animation(entity, components, entities);
+
+                update_control(entity, control_state, components, entities);
+
+            }
+        }
+    }
+    fn render(&mut self, context: &Context, gl: &mut GlGraphics, components: &mut world::Components, entities: &mut Vec<world::Entity>) {
+        // not implemented
+    }
+
+}
+
 fn get_aim_direction(control_state: &world::ControlState) -> Option<Vector2<f32>> {
 
     let mut aim: Vector2<f32> = [0.0, 0.0];
@@ -32,75 +64,6 @@ fn get_aim_direction(control_state: &world::ControlState) -> Option<Vector2<f32>
     } else {
         None
     }
-}
-
-impl world::System for PlayerSystem {
-
-    fn update(&mut self, control_state: &world::ControlState, components: &mut world::Components, entities: &mut Vec<world::Entity>) {
-
-        use world::PlayerState;
-
-        for entity in entities.iter() {
-            if let (Some(player_id), Some(body_id), Some(animator_id)) = (entity.player_controller, entity.dynamic_body, entity.sprite_animator) {
-
-                {
-                    // Update orientation state ..
-                    update_walk_state(entity, components, entities);
-                }
-
-
-                if let Some(aim_direction) = get_aim_direction(control_state) {
-                    let player = components.player_controller.get_mut(player_id);
-                    player.aim_direction = aim_direction;
-
-                    // TODO shoot stuff
-
-                }
-
-                {
-                    update_animation(entity, components, entities);
-                }
-
-                let player = components.player_controller.get(player_id);
-                let body = components.dynamic_body.get_mut(body_id);
-
-                println!("{:?}", player.state);
-
-                if player.state != PlayerState::Flying {
-                    let mut velocity: Vector2<f32> = [0.0, 0.0];
-
-                    if control_state.move_up {
-                        velocity = vec2_add(velocity, [0.0, -1.0]);
-                    }
-
-                    if control_state.move_down {
-                        velocity = vec2_add(velocity, [0.0, 1.0]);
-                    }
-
-                    if control_state.move_left {
-                        velocity = vec2_add(velocity, [-1.0, 0.0]);
-                    }
-
-                    if control_state.move_right {
-                        velocity = vec2_add(velocity, [1.0, 0.0]);
-                    }
-
-                    if velocity != [0.0, 0.0] {
-                        velocity = vec2_normalized(velocity);
-                        velocity = vec2_scale(velocity, player.move_speed);
-                    }
-
-                    body.vx = velocity[0];
-                    body.vy = velocity[1];
-
-                }
-            }
-        }
-    }
-    fn render(&mut self, context: &Context, gl: &mut GlGraphics, components: &mut world::Components, entities: &mut Vec<world::Entity>) {
-        // not implemented
-    }
-
 }
 
 fn aim_up_anim(player: &world::PlayerController, speed: f32) -> world::SpriteAnimation {
@@ -143,8 +106,46 @@ fn aim_forward_anim(player: &world::PlayerController, speed: f32) -> world::Spri
     }
 }
 
+fn update_control(player_entity: &world::Entity, control_state: &world::ControlState, components: &mut world::Components, entities: &Vec<world::Entity>) {
+
+    use world::PlayerState;
+
+    let player = components.player_controller.get(player_entity.player_controller.unwrap());
+    let body = components.dynamic_body.get_mut(player_entity.dynamic_body.unwrap());
+
+    if player.state != PlayerState::Flying {
+        let mut velocity: Vector2<f32> = [0.0, 0.0];
+
+        if control_state.move_up {
+            velocity = vec2_add(velocity, [0.0, -1.0]);
+        }
+
+        if control_state.move_down {
+            velocity = vec2_add(velocity, [0.0, 1.0]);
+        }
+
+        if control_state.move_left {
+            velocity = vec2_add(velocity, [-1.0, 0.0]);
+        }
+
+        if control_state.move_right {
+            velocity = vec2_add(velocity, [1.0, 0.0]);
+        }
+
+        if velocity != [0.0, 0.0] {
+            velocity = vec2_normalized(velocity);
+            velocity = vec2_scale(velocity, player.move_speed);
+        }
+
+        body.vx = velocity[0];
+        body.vy = velocity[1];
+
+    }
+
+}
+
 //
-// TODO - replace this with some generic Animation State Machine
+// TODO - probably replace this with some generic Animation State Machine
 //
 fn update_animation(player_entity: &world::Entity, components: &mut world::Components, entities: &Vec<world::Entity>) {
 
@@ -155,21 +156,21 @@ fn update_animation(player_entity: &world::Entity, components: &mut world::Compo
     let animator = components.sprite_animator.get_mut(player_entity.sprite_animator.unwrap());
     let sprite = &mut components.sprite_renderer.get_mut(player_entity.sprite_renderer.unwrap()).sprite;
 
-    let speed_sqr = body.vx * body.vx + body.vy * body.vy;
+    let speed2 = body.vx * body.vx + body.vy * body.vy;
 
     match player.state {
         PlayerState::Flying => {
 
             if player.aim_direction == [0.0, -1.0] {
-                animator.animation = aim_up_anim(player, speed_sqr);
+                animator.animation = aim_up_anim(player, speed2);
             } else if player.aim_direction == [0.0, 1.0] {
-                animator.animation = aim_down_anim(player, speed_sqr);
+                animator.animation = aim_down_anim(player, speed2);
             } else if player.aim_direction[1] < 0.0 {
-                animator.animation = aim_up_forward_anim(player, speed_sqr);
+                animator.animation = aim_up_forward_anim(player, speed2);
             } else if player.aim_direction[1] > 0.0 {
-                animator.animation = aim_down_forward_anim(player, speed_sqr);
+                animator.animation = aim_down_forward_anim(player, speed2);
             } else {
-                animator.animation = aim_forward_anim(player, speed_sqr);
+                animator.animation = aim_forward_anim(player, speed2);
             }
 
             if player.aim_direction[0] > 0.0 {
@@ -182,15 +183,15 @@ fn update_animation(player_entity: &world::Entity, components: &mut world::Compo
         PlayerState::OnLeftWall => {
 
             if player.aim_direction == [1.0, 0.0] {
-                animator.animation = aim_up_anim(player, speed_sqr);
+                animator.animation = aim_up_anim(player, speed2);
             } else if player.aim_direction == [-1.0, 0.0] {
-                animator.animation = aim_down_anim(player, speed_sqr);
+                animator.animation = aim_down_anim(player, speed2);
             } else if player.aim_direction[0] < 0.0 {
-                animator.animation = aim_down_forward_anim(player, speed_sqr);
+                animator.animation = aim_down_forward_anim(player, speed2);
             } else if player.aim_direction[0] > 0.0 {
-                animator.animation = aim_up_forward_anim(player, speed_sqr);
+                animator.animation = aim_up_forward_anim(player, speed2);
             } else {
-                animator.animation = aim_forward_anim(player, speed_sqr);
+                animator.animation = aim_forward_anim(player, speed2);
             }
 
             if player.aim_direction[1] < 0.0 {
@@ -203,15 +204,15 @@ fn update_animation(player_entity: &world::Entity, components: &mut world::Compo
         PlayerState::OnRightWall => {
 
             if player.aim_direction == [-1.0, 0.0] {
-                animator.animation = aim_up_anim(player, speed_sqr);
+                animator.animation = aim_up_anim(player, speed2);
             } else if player.aim_direction == [1.0, 0.0] {
-                animator.animation = aim_down_anim(player, speed_sqr);
+                animator.animation = aim_down_anim(player, speed2);
             } else if player.aim_direction[0] > 0.0 {
-                animator.animation = aim_down_forward_anim(player, speed_sqr);
+                animator.animation = aim_down_forward_anim(player, speed2);
             } else if player.aim_direction[0] < 0.0 {
-                animator.animation = aim_up_forward_anim(player, speed_sqr);
+                animator.animation = aim_up_forward_anim(player, speed2);
             } else {
-                animator.animation = aim_forward_anim(player, speed_sqr);
+                animator.animation = aim_forward_anim(player, speed2);
             }
 
             if player.aim_direction[1] > 0.0 {
@@ -224,15 +225,15 @@ fn update_animation(player_entity: &world::Entity, components: &mut world::Compo
         PlayerState::OnCeiling => {
 
             if player.aim_direction == [0.0, 1.0] {
-                animator.animation = aim_up_anim(player, speed_sqr);
+                animator.animation = aim_up_anim(player, speed2);
             } else if player.aim_direction == [0.0, -1.0] {
-                animator.animation = aim_down_anim(player, speed_sqr);
+                animator.animation = aim_down_anim(player, speed2);
             } else if player.aim_direction[1] > 0.0 {
-                animator.animation = aim_up_forward_anim(player, speed_sqr);
+                animator.animation = aim_up_forward_anim(player, speed2);
             } else if player.aim_direction[1] < 0.0 {
-                animator.animation = aim_down_forward_anim(player, speed_sqr);
+                animator.animation = aim_down_forward_anim(player, speed2);
             } else {
-                animator.animation = aim_forward_anim(player, speed_sqr);
+                animator.animation = aim_forward_anim(player, speed2);
             }
 
             if player.aim_direction[0] > 0.0 {
@@ -245,15 +246,15 @@ fn update_animation(player_entity: &world::Entity, components: &mut world::Compo
         PlayerState::OnFloor => {
 
             if player.aim_direction == [0.0, -1.0] {
-                animator.animation = aim_up_anim(player, speed_sqr);
+                animator.animation = aim_up_anim(player, speed2);
             } else if player.aim_direction == [0.0, 1.0] {
-                animator.animation = aim_down_anim(player, speed_sqr);
+                animator.animation = aim_down_anim(player, speed2);
             } else if player.aim_direction[1] < 0.0 {
-                animator.animation = aim_up_forward_anim(player, speed_sqr);
+                animator.animation = aim_up_forward_anim(player, speed2);
             } else if player.aim_direction[1] > 0.0 {
-                animator.animation = aim_down_forward_anim(player, speed_sqr);
+                animator.animation = aim_down_forward_anim(player, speed2);
             } else {
-                animator.animation = aim_forward_anim(player, speed_sqr);
+                animator.animation = aim_forward_anim(player, speed2);
             }
 
             if player.aim_direction[0] > 0.0 {
