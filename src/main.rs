@@ -91,6 +91,7 @@ fn init_level(data: &mut world::Components, entities: &mut Vec<world::Entity>) {
                     sprite_renderer: Some(sprite_renderer_ids[(tile - 1) as usize]),
                     sprite_animator: None,
                     player_controller: None,
+                    camera_target: None,
 
                 };
 
@@ -138,7 +139,42 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
         sprite_renderer: Some(data.sprite_renderer.add(sprite_renderer)),
         sprite_animator: Some(data.sprite_animator.add(sprite_animator)),
         player_controller: Some(data.player_controller.add(player_controller)),
+        camera_target: Some(data.camera_target.add(world::CameraTarget)),
     }
+}
+
+fn get_camera_context(world: &world::World, viewport_width: u32, viewport_height: u32) -> Context {
+
+    let mut camera = [0.0, 0.0]; // position of camera relative to world origin (in pixels)
+    // Set camera to Position of first entity with a CameraTarget component
+    for entity in world.entities.iter() {
+        match (entity.position, entity.camera_target) {
+            (Some(position_id), Some(target_id)) => {
+                let position = world.data.position.get(position_id);
+                camera[0] = position.x as f64;
+                camera[1] = position.y as f64;
+                break;
+            },
+            _ => {},
+        }
+    }
+
+    // Y axis needs to be down, otherwise `sprite` gets messed...
+    // TODO consider flipping + scaling every sprite?
+    // Also would be nice to have 1 world unit = 1 tile, instead of pixel
+
+    let sx = 2.0 / viewport_width as f64;
+    let sy = 2.0 / viewport_height as f64;
+    let tx = -camera[0] * 2.0 / viewport_width as f64;
+    let ty = -camera[1] * 2.0 / viewport_height as f64;
+    let mat = [[ sx,  0.0, tx],
+        [ 0.0, -sy, -ty]];
+
+    let mut context = Context::new();
+    context.view = mat;
+    context.transform = mat;
+    context
+
 }
 
 fn main() {
@@ -203,6 +239,7 @@ fn main() {
 
         // TODO where should this go?
         for system in systems.iter_mut() {
+            // TODO need some kind of delta time
             system.update(&control_state, &mut world.data, &mut world.entities);
         }
 
@@ -210,14 +247,16 @@ fn main() {
 
             use graphics::*;
 
-            gl.draw([0, 0, args.width as i32, args.height as i32], |context, mut gl| {
+            gl.draw([0, 0, args.width as i32, args.height as i32], |_, mut gl| {
                 graphics::clear([0.3, 0.3, 0.3, 1.0], gl);
+
+                let context = get_camera_context(&world, args.width, args.height);
 
                 // TODO - probably want sprite sorting orders ..
                 // Currently just draw in order of creation ..
 
                 for system in systems.iter_mut() {
-                    system.render(&context, &mut gl, &mut world.data, &mut world.entities);
+                    system.render(&context, gl, &mut world.data, &mut world.entities);
                 }
             });
         }

@@ -58,12 +58,15 @@ pub struct PlayerController {
     pub move_speed: f32,
 }
 
+pub struct CameraTarget;
+
 #[secs(id)]
 pub struct EntityPrototype {
     position: Position,
     sprite_renderer: SpriteRenderer,
     sprite_animator: SpriteAnimator,
     player_controller: PlayerController,
+    camera_target: CameraTarget,
 }
 
 pub struct ControlState {
