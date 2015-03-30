@@ -5,6 +5,8 @@ use opengl_graphics::{Texture, GlGraphics};
 use graphics::Context;
 use id;
 
+use openal::al;
+
 /// TODO move
 #[derive(Clone, Debug, PartialEq)]
 pub struct SpriteAnimation {
@@ -82,6 +84,9 @@ pub struct PlayerController {
     pub idle_anim_aim_down: SpriteAnimation,
     pub idle_anim_aim_up_forward: SpriteAnimation,
     pub idle_anim_aim_down_forward: SpriteAnimation,
+
+    pub jump_sound: al::Buffer,
+    pub land_sound: al::Buffer,
 }
 
 pub struct CameraTarget;
@@ -96,6 +101,20 @@ pub struct AABBCollider {
     pub height: f32,
 }
 
+pub struct AudioSource {
+    pub source: al::Source,
+    pub buffer: al::Buffer,
+}
+
+impl AudioSource {
+    pub fn new() -> AudioSource {
+        AudioSource {
+            source: al::Source::gen(),
+            buffer: al::Buffer::gen(),
+        }
+    }
+}
+
 #[secs(id)]
 pub struct EntityPrototype {
     position: Position,
@@ -105,6 +124,7 @@ pub struct EntityPrototype {
     camera_target: CameraTarget,
     collider: AABBCollider,
     dynamic_body: DynamicBody,
+    audio_source: AudioSource
 }
 
 pub struct ControlState {

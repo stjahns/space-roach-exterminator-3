@@ -5,22 +5,26 @@
 extern crate graphics;
 extern crate id;
 extern crate input;
+extern crate openal;
 extern crate opengl_graphics;
 extern crate piston;
 extern crate sdl2_window;
+extern crate sndfile;
 extern crate sprite;
-extern crate uuid;
 extern crate tiled;
+extern crate uuid;
 extern crate vecmath;
 
 //extern crate time;
 extern crate libc;
 
-
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc;
 use std::path::Path;
+
+use openal::al;
+use openal::alc;
 
 use sdl2_window::Sdl2Window;
 use opengl_graphics::{
@@ -45,6 +49,7 @@ mod player;
 mod sprites;
 mod physics;
 mod time;
+mod audio;
 
 ///
 /// Load Tiled level, creating entities for each tile instance
@@ -99,7 +104,7 @@ fn init_level(data: &mut world::Components, entities: &mut Vec<world::Entity>) {
                     camera_target: None,
                     collider: Some(data.collider.add(world::AABBCollider { width: 32.0, height: 32.0 })),
                     dynamic_body: None,
-
+                    audio_source: None,
                 };
 
                 // TODO add collision for each tile ...
@@ -185,6 +190,12 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
         start_time: time::precise_time_s(),
     };
 
+    let mut jump_sound = al::Buffer::gen();
+    audio::load_buffer("assets/Jump.wav", &mut jump_sound);
+
+    let mut land_sound = al::Buffer::gen();
+    audio::load_buffer("assets/Land.wav", &mut land_sound);
+
     let player_controller = world::PlayerController {
         move_speed: 1.0,
         state: world::PlayerState::OnFloor,
@@ -203,6 +214,9 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
         idle_anim_aim_down: idle_anim_aim_down,
         idle_anim_aim_up_forward: idle_anim_aim_up_forward,
         idle_anim_aim_down_forward: idle_anim_aim_down_forward,
+
+        land_sound: land_sound,
+        jump_sound: jump_sound,
     };
 
     world::Entity {
@@ -213,6 +227,7 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
         camera_target: Some(data.camera_target.add(world::CameraTarget)),
         collider: Some(data.collider.add(world::AABBCollider { width: 32.0, height: 32.0 })),
         dynamic_body: Some(data.dynamic_body.add(world::DynamicBody { vx: 0.0, vy: 0.0 })),
+        audio_source: Some(data.audio_source.add(world::AudioSource::new())),
     }
 }
 
@@ -252,6 +267,13 @@ fn get_camera_context(world: &world::World, viewport_width: u32, viewport_height
 
 fn main() {
 
+    let mut systems: Vec<Box<world::System>> = vec![
+        Box::new(player::PlayerSystem),
+        Box::new(sprites::SpriteSystem),
+        Box::new(physics::PhysicsSystem),
+        Box::new(audio::AudioSystem::new()),
+    ];
+
     let (width, height) = (640, 480);
     let opengl = OpenGL::_3_2;
     let window = Sdl2Window::new(
@@ -271,6 +293,21 @@ fn main() {
     let player_entity = spawn_player(&mut world.data);
     world.entities.push(player_entity);
 
+    let mut music_source = world::AudioSource::new();
+    music_source.load_file("assets/space_roaches.wav");
+    music_source.play();
+    let music_player = world::Entity {
+        position: None,
+        sprite_renderer: None,
+        sprite_animator: None,
+        player_controller: None,
+        camera_target: None,
+        collider: None,
+        dynamic_body: None,
+        audio_source: Some(world.data.audio_source.add(music_source)),
+    };
+    world.entities.push(music_player);
+
     let ref mut gl = GlGraphics::new(opengl);
     let window = RefCell::new(window);
 
@@ -284,12 +321,6 @@ fn main() {
         aim_up: false,
         aim_down: false,
     };
-
-    let mut systems: Vec<Box<world::System>> = vec![
-        Box::new(player::PlayerSystem),
-        Box::new(sprites::SpriteSystem),
-        Box::new(physics::PhysicsSystem),
-    ];
 
     for e in piston::events(&window) {
         use piston::event::{ RenderEvent, PressEvent, ReleaseEvent };

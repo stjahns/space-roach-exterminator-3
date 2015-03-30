@@ -273,17 +273,29 @@ fn update_walk_state(player_entity: &world::Entity, components: &mut world::Comp
 
     let new_state = get_walk_state(player_entity, components, entities);
 
+    let player = components.player_controller.get_mut(player_entity.player_controller.unwrap());
     let sprite = &mut components.sprite_renderer.get_mut(player_entity.sprite_renderer.unwrap()).sprite;
+    let audio_source = components.audio_source.get_mut(player_entity.audio_source.unwrap());
 
     match new_state {
-        PlayerState::Flying => { sprite.set_rotation(0.0) },
+        PlayerState::Flying => {
+
+            if player.state != PlayerState::Flying {
+                audio_source.play_buffer(player.jump_sound.clone());
+            }
+
+            sprite.set_rotation(0.0)
+        },
         PlayerState::OnLeftWall => { sprite.set_rotation(90.0) },
         PlayerState::OnRightWall => { sprite.set_rotation(270.0) },
         PlayerState::OnCeiling => { sprite.set_rotation(180.0) },
         PlayerState::OnFloor => { sprite.set_rotation(0.0) },
     }
 
-    let player = components.player_controller.get_mut(player_entity.player_controller.unwrap());
+    if player.state == PlayerState::Flying && new_state != PlayerState::Flying {
+        audio_source.play_buffer(player.land_sound.clone());
+    }
+
     player.state = new_state;
 }
 

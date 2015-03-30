@@ -3,6 +3,7 @@ name = "space-roach-exterminator-3"
 version = "0.0.1"
 dependencies = [
  "id 0.0.1 (git+https://github.com/kvark/simplecs)",
+ "openal-rs 0.0.1 (git+https://github.com/bjz/openal-rs)",
  "piston 0.0.8 (git+https://github.com/pistondevelopers/piston)",
  "piston2d-graphics 0.0.25 (git+https://github.com/pistondevelopers/graphics)",
  "piston2d-opengl_graphics 0.0.10 (git+https://github.com/pistondevelopers/opengl_graphics)",
@@ -10,6 +11,7 @@ dependencies = [
  "pistoncore-input 0.0.6 (git+https://github.com/PistonDevelopers/input)",
  "pistoncore-sdl2_window 0.0.6 (git+https://github.com/pistondevelopers/sdl2_window)",
  "secs 0.0.1 (git+https://github.com/kvark/simplecs)",
+ "sndfile 0.0.1 (git+https://github.com/jeremyletang/rust-sndfile)",
  "tiled 0.1.1 (git+https://github.com/mattyhall/rs-tiled.git)",
  "uuid 0.1.13 (git+https://github.com/rust-lang/uuid)",
  "vecmath 0.0.5 (git+https://github.com/pistondevelopers/vecmath)",
@@ -171,6 +173,11 @@ dependencies = [
  "rand 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "openal-rs"
+version = "0.0.1"
+source = "git+https://github.com/bjz/openal-rs#5c6a7502ab8f84831d8f2936b33885dd068d7587"
 
 [[package]]
 name = "piston"
@@ -349,6 +356,11 @@ source = "git+https://github.com/kvark/simplecs#9819220f4b8eaf532193119b970a7a22
 name = "shader_version"
 version = "0.0.4"
 source = "git+https://github.com/pistondevelopers/shader_version#330c38b8fee173aab3b43911f58ab5b4d9eecba0"
+
+[[package]]
+name = "sndfile"
+version = "0.0.1"
+source = "git+https://github.com/jeremyletang/rust-sndfile#1054696369edaa9979a2cd784cca405f9f24760d"
 
 [[package]]
 name = "tiled"

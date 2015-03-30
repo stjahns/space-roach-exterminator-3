@@ -40,3 +40,9 @@ plugin = true
 
 [dependencies.vecmath]
 git = "https://github.com/pistondevelopers/vecmath"
+
+[dependencies.openal-rs]
+git = "https://github.com/bjz/openal-rs"
+
+[dependencies.sndfile]
+git = "https://github.com/jeremyletang/rust-sndfile"
