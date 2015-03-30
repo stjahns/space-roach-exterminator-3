@@ -1,6 +1,6 @@
 use graphics::Context;
 use opengl_graphics::GlGraphics;
-use time::*;
+use time;
 
 use world;
 
@@ -24,7 +24,7 @@ impl world::System for SpriteSystem {
                 // Update animation frame if animated
                 if let Some(a_id) = entity.sprite_animator {
                     let sprite_animator = components.sprite_animator.get(a_id);
-                    let frame = sprite_animator.get_frame(precise_time_s());
+                    let frame = sprite_animator.get_frame(time::precise_time_s());
                     sprite_renderer.sprite.set_src_rect(frame);
                 }
 

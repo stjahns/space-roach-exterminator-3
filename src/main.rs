@@ -1,4 +1,5 @@
 #![feature(collections, core, custom_attribute, plugin)]
+#![feature(libc)] // tmp hack
 #![plugin(secs)]
 
 extern crate graphics;
@@ -8,10 +9,13 @@ extern crate opengl_graphics;
 extern crate piston;
 extern crate sdl2_window;
 extern crate sprite;
-extern crate time;
 extern crate uuid;
 extern crate tiled;
 extern crate vecmath;
+
+//extern crate time;
+extern crate libc;
+
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -27,8 +31,6 @@ use opengl_graphics::{
 
 use graphics::Context;
 
-use time::*;
-
 use input::Button::{Keyboard};
 use input::keyboard::Key;
 
@@ -42,6 +44,7 @@ mod world;
 mod player;
 mod sprites;
 mod physics;
+mod time;
 
 ///
 /// Load Tiled level, creating entities for each tile instance
