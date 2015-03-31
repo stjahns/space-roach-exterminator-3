@@ -4,6 +4,8 @@ use sprite::*;
 use opengl_graphics::{Texture, GlGraphics};
 use graphics::Context;
 use id;
+use id::Id;
+use vecmath::*;
 
 use openal::al;
 
@@ -106,14 +108,25 @@ pub struct AudioSource {
     pub buffer: al::Buffer,
 }
 
-impl AudioSource {
-    pub fn new() -> AudioSource {
-        AudioSource {
-            source: al::Source::gen(),
-            buffer: al::Buffer::gen(),
-        }
-    }
+pub struct Weapon {
+    pub fire_delay: f32,
+    pub bullet_speed: f32,
+    pub fire_timer: f32,
+    pub fire_sound: al::Buffer,
+    pub firing: bool,
+    pub fire_direction: Vector2<f32>,
 }
+
+pub struct Bullet;
+
+pub enum Event {
+    Collision(Id<AABBCollider>, Id<AABBCollider>)
+}
+
+pub struct EventReceiver {
+    pub event_queue: Vec<Event>,
+}
+
 
 #[secs(id)]
 pub struct EntityPrototype {
@@ -124,7 +137,10 @@ pub struct EntityPrototype {
     camera_target: CameraTarget,
     collider: AABBCollider,
     dynamic_body: DynamicBody,
-    audio_source: AudioSource
+    audio_source: AudioSource,
+    weapon: Weapon,
+    bullet: Bullet,
+    event_receiver: EventReceiver,
 }
 
 pub struct ControlState {

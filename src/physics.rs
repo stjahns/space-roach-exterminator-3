@@ -2,6 +2,7 @@ use graphics::Context;
 use opengl_graphics::GlGraphics;
 
 use world;
+use event::*;
 
 pub struct PhysicsSystem;
 
@@ -24,6 +25,20 @@ impl world::System for PhysicsSystem {
                     let position = components.position.get_mut(position_id);
                     position.x = new_position.x;
                     position.y = new_position.y;
+                } else {
+
+                    // TODO send some collision event somehow?
+                    // Can't really send to Entity itself, send it to
+
+                    if let Some(id) = entity.event_receiver {
+
+                        let event_receiver = components.event_receiver.get_mut(id);
+                        // TODO want other collider id, important for bullets hitting roaches!
+                        // TODO post event to both entities?
+                        event_receiver.post_event(world::Event::Collision(collider_id, collider_id));
+                        // also only want to fire this once...?
+
+                    }
 
                 }
             }

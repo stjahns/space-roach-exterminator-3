@@ -50,6 +50,7 @@ mod sprites;
 mod physics;
 mod time;
 mod audio;
+mod event;
 
 ///
 /// Load Tiled level, creating entities for each tile instance
@@ -105,6 +106,9 @@ fn init_level(data: &mut world::Components, entities: &mut Vec<world::Entity>) {
                     collider: Some(data.collider.add(world::AABBCollider { width: 32.0, height: 32.0 })),
                     dynamic_body: None,
                     audio_source: None,
+                    weapon: None,
+                    bullet: None,
+                    event_receiver: None,
                 };
 
                 // TODO add collision for each tile ...
@@ -190,6 +194,7 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
         start_time: time::precise_time_s(),
     };
 
+    // TODO - should generate buffers through AudioSystem
     let mut jump_sound = al::Buffer::gen();
     audio::load_buffer("assets/Jump.wav", &mut jump_sound);
 
@@ -228,6 +233,9 @@ fn spawn_player(data: &mut world::Components) -> world::Entity {
         collider: Some(data.collider.add(world::AABBCollider { width: 32.0, height: 32.0 })),
         dynamic_body: Some(data.dynamic_body.add(world::DynamicBody { vx: 0.0, vy: 0.0 })),
         audio_source: Some(data.audio_source.add(world::AudioSource::new())),
+        weapon: Some(data.weapon.add(world::Weapon::new())),
+        bullet: None,
+        event_receiver: Some(data.event_receiver.add(world::EventReceiver::new())),
     }
 }
 
@@ -305,11 +313,14 @@ fn main() {
         collider: None,
         dynamic_body: None,
         audio_source: Some(world.data.audio_source.add(music_source)),
+        weapon: None,
+        bullet: None,
+        event_receiver: None,
     };
     world.entities.push(music_player);
 
     let ref mut gl = GlGraphics::new(opengl);
-    let window = RefCell::new(window);
+    let window = Rc::new(RefCell::new(window));
 
     let mut control_state = world::ControlState {
         move_left: false,
@@ -322,7 +333,7 @@ fn main() {
         aim_down: false,
     };
 
-    for e in piston::events(&window) {
+    for e in piston::events(window) {
         use piston::event::{ RenderEvent, PressEvent, ReleaseEvent };
         use world::System;
 

@@ -9,6 +9,14 @@ use world;
 const READ_BUFFER_SIZE: usize = 4096;
 
 impl world::AudioSource {
+
+    pub fn new() -> world::AudioSource {
+        world::AudioSource {
+            source: al::Source::gen(),
+            buffer: al::Buffer::gen(),
+        }
+    }
+
     pub fn load_file(&mut self, path: &str) {
         load_buffer(path, &mut self.buffer);
     }
@@ -55,7 +63,7 @@ impl world::System for AudioSystem {
 
 impl Drop for AudioSystem {
     fn drop(&mut self) {
-        self.device.close();
+        self.device.close().ok().expect("Unable to close device");
     }
 }
 
